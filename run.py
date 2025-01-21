@@ -1,46 +1,48 @@
 import argparse
-import os
 import torch
-from exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
-# from exp.exp_imputation import Exp_Imputation
-# from exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
-# from exp.exp_anomaly_detection import Exp_Anomaly_Detection
-# from exp.exp_classification import Exp_Classification
-import random
-import numpy as np
+import datetime
+from sageformer import Trainer
+
+def run_model(config, flag='train'):
+    # init
+    model = Trainer(config)
+
+    if flag == 'train':
+        setting = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        model.train(setting)
+
+        model.test(setting)
+        model.predict(setting, True)
+    torch.cuda.empty_cache()
+    return True
+
 
 if __name__ == '__main__':
-    fix_seed = 2021
-    random.seed(fix_seed)
-    torch.manual_seed(fix_seed)
-    np.random.seed(fix_seed)
-
-    parser = argparse.ArgumentParser(description='TimesNet')
+    parser = argparse.ArgumentParser(description='sageformer')
 
     # basic config
-    parser.add_argument('--task_name', type=str, required=True, default='long_term_forecast',
+    parser.add_argument('--task_name', type=str, default='long_term_forecast',
                         help='task name, options:[long_term_forecast, short_term_forecast, imputation, classification, anomaly_detection]')
-    parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
-    parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
-    parser.add_argument('--model', type=str, required=True, default='Autoformer',
+    parser.add_argument('--is_training', type=int, default=1, help='status')
+    parser.add_argument('--model_id', type=str, default='test', help='model id')
+    parser.add_argument('--model', type=str, default='Autoformer',
                         help='model name, options: [Autoformer, Transformer, TimesNet]')
 
     # data loader
-    parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')
-    parser.add_argument('--root_path', type=str, default='./data/ETT/', help='root path of the data file')
-    parser.add_argument('--data_path', type=str, default='ETTh1.csv', help='data file')
-    parser.add_argument('--features', type=str, default='M',
+    parser.add_argument('--data', type=str, default='WAS', help='dataset type')
+    parser.add_argument('--root_path', type=str, default='/home/dyd9800/dataset/', help='root path of the data file')
+    parser.add_argument('--data_path', type=str, default='was.csv', help='data file')
+    parser.add_argument('--features', type=str, default='MS',
                         help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
-    parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
-    parser.add_argument('--freq', type=str, default='h',
-                        help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
+    parser.add_argument('--target', type=str, default='txn_elapse', help='target feature in S or MS task') # txn_elapse, tps
+    parser.add_argument('--freq', type=str, default='t', help='options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly] ')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 
     # forecasting task
-    parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
+    parser.add_argument('--seq_len', type=int, default=60, help='input sequence length')
     parser.add_argument('--label_len', type=int, default=48, help='start token length')
-    parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
-    parser.add_argument('--seasonal_patterns', type=str, default='Monthly', help='subset for M4')
+    parser.add_argument('--pred_len', type=int, default=60, help='prediction sequence length')
+    parser.add_argument('--seasonal_patterns', type=str, default='hourly', help='subset for M4')
 
     # inputation task
     parser.add_argument('--mask_rate', type=float, default=0.25, help='mask ratio')
@@ -51,7 +53,7 @@ if __name__ == '__main__':
     # model define
     parser.add_argument('--top_k', type=int, default=5, help='for TimesBlock')
     parser.add_argument('--num_kernels', type=int, default=6, help='for Inception')
-    parser.add_argument('--enc_in', type=int, default=7, help='encoder input size')
+    parser.add_argument('--enc_in', type=int, default=17, help='encoder input size')
     parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
     parser.add_argument('--c_out', type=int, default=7, help='output size')
     parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
@@ -94,16 +96,16 @@ if __name__ == '__main__':
     parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
 
     # sageformer params
-    parser.add_argument('--cls_len', type=int, default=3, help='global token length')
+    parser.add_argument('--cls_len', type=int, default=1, help='global token length')
     parser.add_argument('--graph_depth', type=int, default=3, help='graph aggregation depth')
-    parser.add_argument('--knn', type=int, default=16, help='graph nearest neighbors')
+    parser.add_argument('--knn', type=int, default=6, help='graph nearest neighbors')
     parser.add_argument('--embed_dim', type=int, default=16, help='node embed dim')
 
     args = parser.parse_args()
     args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
 
     if args.use_gpu and args.use_multi_gpu:
-        args.devices = args.devices.replace(' ', '')
+        args.dvices = args.devices.replace(' ', '')
         device_ids = args.devices.split(',')
         args.device_ids = [int(id_) for id_ in device_ids]
         args.gpu = args.device_ids[0]
@@ -111,70 +113,4 @@ if __name__ == '__main__':
     print('Args in experiment:')
     print(args)
 
-    if args.task_name == 'long_term_forecast':
-        Exp = Exp_Long_Term_Forecast
-    # elif args.task_name == 'short_term_forecast':
-    #     Exp = Exp_Short_Term_Forecast
-    # elif args.task_name == 'imputation':
-    #     Exp = Exp_Imputation
-    # elif args.task_name == 'anomaly_detection':
-    #     Exp = Exp_Anomaly_Detection
-    # elif args.task_name == 'classification':
-    #     Exp = Exp_Classification
-    else:
-        Exp = Exp_Long_Term_Forecast
-
-    if args.is_training:
-        for ii in range(args.itr):
-            # setting record of experiments
-            setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
-                args.task_name,
-                args.model_id,
-                args.model,
-                args.data,
-                args.features,
-                args.seq_len,
-                args.label_len,
-                args.pred_len,
-                args.d_model,
-                args.n_heads,
-                args.e_layers,
-                args.d_layers,
-                args.d_ff,
-                args.factor,
-                args.embed,
-                args.distil,
-                args.des, ii)
-
-            exp = Exp(args)  # set experiments
-            print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
-            exp.train(setting)
-
-            print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-            exp.test(setting)
-            torch.cuda.empty_cache()
-    else:
-        ii = 0
-        setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
-            args.task_name,
-            args.model_id,
-            args.model,
-            args.data,
-            args.features,
-            args.seq_len,
-            args.label_len,
-            args.pred_len,
-            args.d_model,
-            args.n_heads,
-            args.e_layers,
-            args.d_layers,
-            args.d_ff,
-            args.factor,
-            args.embed,
-            args.distil,
-            args.des, ii)
-
-        exp = Exp(args)  # set experiments
-        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-        exp.test(setting, test=1)
-        torch.cuda.empty_cache()
+    performances = run_model(args, flag='train')
