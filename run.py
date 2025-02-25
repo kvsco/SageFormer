@@ -12,7 +12,7 @@ def run_model(config, flag='train'):
         model.train(setting)
 
         model.test(setting)
-        model.predict(setting, True)
+        # model.predict(setting, True)
     torch.cuda.empty_cache()
     return True
 
@@ -29,19 +29,19 @@ if __name__ == '__main__':
                         help='model name, options: [Autoformer, Transformer, TimesNet]')
 
     # data loader
-    parser.add_argument('--data', type=str, default='WAS', help='dataset type')
+    parser.add_argument('--data', type=str, default='custom', help='dataset type')
     parser.add_argument('--root_path', type=str, default='/home/dyd9800/dataset/', help='root path of the data file')
-    parser.add_argument('--data_path', type=str, default='was.csv', help='data file')
+    parser.add_argument('--data_path', type=str, default='machine_train.csv', help='data file')
     parser.add_argument('--features', type=str, default='MS',
                         help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
-    parser.add_argument('--target', type=str, default='txn_elapse', help='target feature in S or MS task') # txn_elapse, tps
+    parser.add_argument('--target', type=str, default='machine_7_8', help='target feature in S or MS task') # txn_elapse, tps
     parser.add_argument('--freq', type=str, default='t', help='options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly] ')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 
     # forecasting task
     parser.add_argument('--seq_len', type=int, default=60, help='input sequence length')
-    parser.add_argument('--label_len', type=int, default=48, help='start token length')
-    parser.add_argument('--pred_len', type=int, default=60, help='prediction sequence length')
+    parser.add_argument('--label_len', type=int, default=30, help='start token length')
+    parser.add_argument('--pred_len', type=int, default=30, help='prediction sequence length')
     parser.add_argument('--seasonal_patterns', type=str, default='hourly', help='subset for M4')
 
     # inputation task
@@ -53,9 +53,9 @@ if __name__ == '__main__':
     # model define
     parser.add_argument('--top_k', type=int, default=5, help='for TimesBlock')
     parser.add_argument('--num_kernels', type=int, default=6, help='for Inception')
-    parser.add_argument('--enc_in', type=int, default=17, help='encoder input size')
-    parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
-    parser.add_argument('--c_out', type=int, default=7, help='output size')
+    parser.add_argument('--enc_in', type=int, default=228, help='encoder input size')
+    parser.add_argument('--dec_in', type=int, default=228, help='decoder input size')
+    parser.add_argument('--c_out', type=int, default=228, help='output size')
     parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
     parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
     parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
     parser.add_argument('--itr', type=int, default=1, help='experiments times')
     parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
-    parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
+    parser.add_argument('--batch_size', type=int, default=16, help='batch size of train input data')
     parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
     parser.add_argument('--des', type=str, default='test', help='exp description')
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     # sageformer params
     parser.add_argument('--cls_len', type=int, default=1, help='global token length')
     parser.add_argument('--graph_depth', type=int, default=3, help='graph aggregation depth')
-    parser.add_argument('--knn', type=int, default=6, help='graph nearest neighbors')
+    parser.add_argument('--knn', type=int, default=16, help='graph nearest neighbors')
     parser.add_argument('--embed_dim', type=int, default=16, help='node embed dim')
 
     args = parser.parse_args()
